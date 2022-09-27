@@ -48,6 +48,7 @@ class GUI(QDialog):
     def __init_window(self):
         self.setWindowTitle("ATD - Asystent Tworzenia Drużyn")
         self.setWindowIcon(QtGui.QIcon('icon/icon.ico'))
+        self.setWindowFlags(QtCore.Qt.WindowCloseButtonHint)
         self.move(300, 50)
         self.layout()
 
@@ -63,7 +64,7 @@ class GUI(QDialog):
         button_save = QPushButton("Stwórz schamaty")
         button_save.clicked.connect(self.__create_schemes)
 
-        author = QLabel("   2022 Patryk Lukaszewski V1.7")
+        author = QLabel("   2022 Patryk Lukaszewski V1.8")
         author.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
         license_modify_time = QLabel(self.__get_date_creating_license_file())
@@ -171,7 +172,7 @@ class GUI(QDialog):
         """Zwraca kiedy ostatno był modyfikowany plik z licencjami."""
         path_to_license_file = self.__config["license_file"]["path"]
         modification_time = time.strftime('%d.%m.%Y', time.localtime(os.path.getmtime(path_to_license_file)))
-        return "Lecencje: stan na " + modification_time
+        return "Licencje: stan na " + modification_time
 
     @staticmethod
     def __get_config():
