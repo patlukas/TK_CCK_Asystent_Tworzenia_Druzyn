@@ -44,19 +44,20 @@ class GUI(QDialog):
             self.__selected_game_type = self.__get_last_selected_game_type()
             self.__get_player_with_valid_licenses = self.__config["valid_licenses"]
             self.__save_with_polish_signs = self.__config["polish_characters"]
-            self.__player_section: PlayerSection | None = None
+            self.__player_section = None
             self.__set_layout()
 
     def __init_window(self):
         """."""
         self.setWindowTitle("ATD - Asystent Tworzenia Drużyn")
-        self.setWindowFlag(Qt.WindowMinimizeButtonHint)
+        # self.setWindowFlag(Qt.WindowMinimizeButtonHint)
         self.setWindowIcon(QtGui.QIcon('icon/icon.ico'))
         self.move(300, 50)
         self.layout()
 
     def __set_layout(self):
         """."""
+
         game_type_selection = GameTypeSelection(self.__save_with_polish_signs, self.__get_player_with_valid_licenses,
                                                 self.__selected_game_type["name"],
                                                 self.__list_name_game_type, self.__on_selected_game_type,
@@ -94,6 +95,7 @@ class GUI(QDialog):
         row4_layout.addWidget(author, 0, 1)
 
         column1_layout.addWidget(row1, 0, 0)
+
         column1_layout.addWidget(self.__player_section, 1, 0)
         column1_layout.addWidget(button_save, 2, 0)
         column1_layout.addWidget(row4, 3, 0)
@@ -101,20 +103,19 @@ class GUI(QDialog):
         self.__layout.addWidget(column1)
         self.__layout.setContentsMargins(10, 10, 10, 3)
 
-    def __set_layout_missing_file(self, list_missing_file: list[str], list_missing_dir: list[str],
-                                  bad_path_file: list[str]):
+    def __set_layout_missing_file(self, list_missing_file, list_missing_dir, bad_path_file):
         text = ""
         if len(list_missing_file):
             text = "Brakuje następujących plików:"
             for name_file in list_missing_file:
-                text += f"\n    -   {name_file}"
+                text += "\n    -   " + name_file
             if len(list_missing_dir) or len(bad_path_file):
                 text += "\n\n"
 
         if len(list_missing_dir):
             text += "Błędna ścieżka do następujących katalogów:"
             for name_file in list_missing_dir:
-                text += f"\n    -   {name_file}"
+                text += "\n    -   " + name_file
             if len(bad_path_file):
                 text += "\n\n"
 
@@ -122,7 +123,7 @@ class GUI(QDialog):
             text += "Ścieżki do tych plików nie mogą zawierać \n" \
                     "pojedyńczego '\\', zasmiast tego musi mieć '/' lub '\\\\':"
             for name_file in bad_path_file:
-                text += f"\n    -   {name_file}"
+                text += "\n    -   " + name_file
         label = QLabel(text)
         label.setStyleSheet(''' font-size: 24px; color: red''')
         self.__layout.addWidget(label)
@@ -140,8 +141,9 @@ class GUI(QDialog):
 
         if len(list_missing_file) + len(list_missing_dir) + len(bad_path_file) > 0:
             return list_missing_file, list_missing_dir, bad_path_file
-
+        print("1")
         config = self.__get_config()
+        print("2")
         if config is False:
             bad_path_file.append("W config.json jest pojedyńczy '\\' zamiast '\\\\'")
             return list_missing_file, list_missing_dir, bad_path_file
@@ -166,22 +168,21 @@ class GUI(QDialog):
             return True
         return False
 
-
     def __get_date_creating_license_file(self):
         path_to_license_file = self.__config["license_file"]["path"]
         modification_time = time.strftime('%d.%m.%Y', time.localtime(os.path.getmtime(path_to_license_file)))
-        return f"Lecencje: stan na {modification_time}"
+        return "Lecencje: stan na " + modification_time
 
     @staticmethod
-    def __get_config() -> dict:
-        f = open("config.json", encoding='utf-8')
+    def __get_config():
+        f = open("config.json", encoding='utf-8-sig')
         try:
             config = json.load(f)
         except json.decoder.JSONDecodeError:
             return False
         return config
 
-    def __get_list_name_game_type(self) -> list[str]:
+    def __get_list_name_game_type(self):
         list_name = []
         for game_type in self.__list_game_type:
             list_name.append(game_type["name"])
@@ -210,12 +211,12 @@ class GUI(QDialog):
         msg.setWindowTitle("Info")
         info = "Schematy zostały zapisany. Nazwy zapisanych schematów to:\n"
         for schema_name in list_schema_names:
-            info += f"{schema_name}\n"
+            info += schema_name + "\n"
         msg.setText(info)
         msg.setIcon(QMessageBox.Information)
         x = msg.exec_()
 
-    def __read_existing_schemes(self, path_to_dir_witch_schemes: str) -> list[int, list[str], list[str]]:
+    def __read_existing_schemes(self, path_to_dir_witch_schemes: str):
         """
 
         :param path_to_dir_witch_schemes:
@@ -250,15 +251,14 @@ class GUI(QDialog):
             files.sort()
             return files
         except FileNotFoundError:
-            print("T")
             return []
 
     @staticmethod
-    def __del_list_file(path_to_dir: str, list_name_file: list[str]):
+    def __del_list_file(path_to_dir: str, list_name_file):
         for name_file in list_name_file:
-            os.remove(f"{path_to_dir}/{name_file}")
+            os.remove(path_to_dir + "/" + name_file)
 
-    def __save_new_schemes(self, path_to_dir: str, next_file_nr: int, list_exist_schemes_name: list[str]) -> list[str]:
+    def __save_new_schemes(self, path_to_dir: str, next_file_nr: int, list_exist_schemes_name):
         list_schema_names = []
         schemes_data = self.__player_section.get_data()
         how_many_players_in_scheme = len(self.__selected_game_type["order_of_player"])
@@ -272,8 +272,8 @@ class GUI(QDialog):
                 self.__save_name_tournament(name)
             list_exist_schemes_name.append(name)
             list_schema_names.append(name)
-            file_text = f"[Allgemein]\nName={name}\nSpielklasse=\nLiga=\nBezirk=\nSpielführer=\nBetreuer " \
-                        f"1=\nVereins-Nr=\nLV-Nr=0\nAnzahl Spieler={how_many_players_in_scheme}\n"
+            file_text = "[Allgemein]\nName=" + str(name) + "\nSpielklasse=\nLiga=\nBezirk=\nSpielführer=\nBetreuer " \
+                        "1=\nVereins-Nr=\nLV-Nr=0\nAnzahl Spieler=" + str(how_many_players_in_scheme) + "\n"
             nr_player = 0
             for j, order_of_player in enumerate(self.__selected_game_type["order_of_player"]):
                 last_name, name, team = "No", "Player", ""
@@ -281,11 +281,12 @@ class GUI(QDialog):
                     player_data = scheme_data["players"][nr_player]
                     nr_player += 1
                     last_name, name, team = player_data['last_name'], player_data['name'], player_data['team']
-                file_text += f"[Spieler {j}]\nName={name}\nVorname={last_name}\nLetztes Spiel=\nPlatz-Ziffer=\n" \
-                             f"Spielernr.=\nGeb.-Jahr=\nAltersklasse=\nPass-Nr.=\nRangliste=\nVerein={team}\n"
+                file_text += "[Spieler " + str(j) + "]\nName=" + str(name) + "\nVorname=" + str(last_name) + "\nLetztes Spiel=\n" \
+                             "Platz-Ziffer=\n Spielernr.=\nGeb.-Jahr=\nAltersklasse=\nPass-Nr.=\nRangliste=\n" \
+                                                                                              "Verein=" + str(team) + "\n"
             if self.__save_with_polish_signs is False:
                 file_text = self.__remove_polish_characters(file_text)
-            file = open(f"{path_to_dir}/ms{next_file_nr + i}.ini", "w")
+            file = open(path_to_dir + "/ms" + str(next_file_nr + i) + ".ini", "w")
             file.write(file_text)
             file.close()
         return list_schema_names
@@ -314,16 +315,16 @@ class GUI(QDialog):
     @staticmethod
     def __save_last_game_type(name_game_type: str):
         filename = 'cash.json'
-        with open(filename, 'r', encoding='utf-8') as f:
+        with open(filename, 'r', encoding='utf-8-sig') as f:
             data = json.load(f)
             data['last_game_type'] = name_game_type  # <--- add `id` value.
 
         os.remove(filename)
-        with open(filename, 'w', encoding='utf-8') as f:
+        with open(filename, 'w', encoding='utf-8-sig') as f:
             json.dump(data, f, indent=4)
 
     def __get_last_selected_game_type(self) -> dict:
-        f = open("cash.json", encoding='utf-8')
+        f = open("cash.json", encoding='utf-8-sig')
         cash = json.load(f)
         game_type_name = cash["last_game_type"]
         for game_type in self.__list_game_type:
@@ -337,7 +338,7 @@ class GameTypeSelection(QGroupBox):
 
     def __init__(self, default_bool_polish_characters: bool, default_bool_valid_licenses: bool,
                  name_selected_game_type: str,
-                 list_name_game_type: list[str], on_selected_game_type, click_checkbox_valid_licenses,
+                 list_name_game_type, on_selected_game_type, click_checkbox_valid_licenses,
                  click_checkbox_polish_sign):
         super().__init__("Główne ustawienia")
         self.__on_selected_game_type = on_selected_game_type
@@ -345,10 +346,10 @@ class GameTypeSelection(QGroupBox):
         self.__click_checkbox_valid_licenses = click_checkbox_valid_licenses
         self.__list_name_game_type = list_name_game_type
         self.__layout = QGridLayout()
-        self.__label_types: QLabel | None = None
-        self.__combobox_game_type: QComboBox | None = None
-        self.__checkbox_valid_licenses: QCheckBox | None = None
-        self.__checkbox_with_polish_signs: QCheckBox | None = None
+        self.__label_types = None
+        self.__combobox_game_type = None
+        self.__checkbox_valid_licenses = None
+        self.__checkbox_with_polish_signs = None
         self.__create_widgets(default_bool_valid_licenses, default_bool_polish_characters, name_selected_game_type)
         self.setLayout(self.__layout)
         self.__set_layout()
@@ -389,12 +390,12 @@ class PlayerSection(QWidget):
         super().__init__()
         self.__settings_game_type = game_type
         self.__player_with_valid_licenses = player_with_valid_licenses
-        self.__widgets: list[dict] = []
-        self.__list_team_name: list = []
+        self.__widgets = []
+        self.__list_team_name = []
         self.__number_of_player_in_team = 0
         self.__list_age_category = []
-        self.__license_config: dict = {}
-        self.__game_type: str = ""
+        self.__license_config = {}
+        self.__game_type = ""
         self.__layout = QGridLayout()
         self.setLayout(self.__layout)
         self.set_layout()
@@ -423,7 +424,7 @@ class PlayerSection(QWidget):
             home = False
             if self.__settings_game_type["type"] != "turniej" and i == 0:
                 home = True
-            self.__layout.addWidget(self.__team_column(f"Drużyna nr {i + 1}", self.__widgets[i], home), 0, i)
+            self.__layout.addWidget(self.__team_column("Drużyna nr " + str(i + 1), self.__widgets[i], home), 0, i)
 
     def __team_column(self, name: str, dict_widgets: dict, home: bool):
         """."""
@@ -450,7 +451,7 @@ class PlayerSection(QWidget):
             combobox_player = QComboBox()
             combobox_player.setEditable(True)
             list_combobox_player.append(combobox_player)
-            layout.addWidget(QLabel(f"Gracz {i + 1}"), 2 + i, 0)
+            layout.addWidget(QLabel("Gracz " + str(i + 1)), 2 + i, 0)
             layout.addWidget(combobox_player, 2 + i, 1)
         dict_widgets["combobox_team"] = combobox_team
         dict_widgets["input_name_team"] = input_name_team
@@ -467,7 +468,7 @@ class PlayerSection(QWidget):
             name_team = ""
         else:
             name_team = dict_widgets["combobox_team"].currentText()
-            dict_widgets["input_name_team"].setText(f". {name_team} .")
+            dict_widgets["input_name_team"].setText(". " + name_team + " .")
 
         list_players = self.__get_list_players(name_team)
 
@@ -478,7 +479,7 @@ class PlayerSection(QWidget):
 
     @staticmethod
     def __get_license_config() -> dict:
-        f = open("config.json", encoding='utf-8')
+        f = open("config.json", encoding='utf-8-sig')
         config = json.load(f)
         return config["license_file"]
 
@@ -493,7 +494,7 @@ class PlayerSection(QWidget):
         path = self.__license_config["path"]
         list_team = [""]
 
-        with open(path, "r", encoding='utf-8') as csv_file:
+        with open(path, "r", encoding='utf-8-sig') as csv_file:
             csv_reader = csv.reader(csv_file)
             line_count = 0
             for row in csv_reader:
@@ -531,7 +532,7 @@ class PlayerSection(QWidget):
             "name": "Player"
         }]
 
-        with open(path, "r", encoding='utf-8') as csv_file:
+        with open(path, "r", encoding='utf-8-sig') as csv_file:
             csv_reader = csv.reader(csv_file)
             line_count = 0
             for row in csv_reader:
@@ -587,13 +588,13 @@ class PlayerSection(QWidget):
 
     @staticmethod
     def __get_tournament_name() -> str:
-        f = open("cash.json", encoding='utf-8')
+        f = open("cash.json", encoding='utf-8-sig')
         cash = json.load(f)
         return cash["tournament_name"]
 
     @staticmethod
     def __get_home_team() -> str:
-        f = open("cash.json", encoding='utf-8')
+        f = open("cash.json", encoding='utf-8-sig')
         cash = json.load(f)
         return cash["home_team"]
 
