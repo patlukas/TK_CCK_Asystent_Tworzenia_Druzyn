@@ -19,7 +19,6 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QMessageBox
 )
-from PyQt5.QtCore import Qt
 from PyQt5 import QtCore
 from PyQt5 import QtGui
 
@@ -28,18 +27,17 @@ class GUI(QDialog):
     """."""
 
     def __init__(self):
-        """."""
         super().__init__()
         self.__init_window()
         self.__layout = QHBoxLayout()
         self.setLayout(self.__layout)
 
-        list_missing_file, list_missing_dir, bad_path_file = self.__check_all_file_and_dir_exists()
-        if len(list_missing_dir) + len(list_missing_file) + len(bad_path_file) > 0:
+        config, list_missing_file, list_missing_dir, bad_path_file = self.__check_all_file_and_dir_exists()
+        if len(list_missing_dir) or len(list_missing_file) or len(bad_path_file) or config is False:
             self.__set_layout_missing_file(list_missing_file, list_missing_dir, bad_path_file)
         else:
-            self.__config = self.__get_config()
-            self.__list_game_type = self.__config["Rodzaje"]
+            self.__config = config
+            self.__list_game_type = config["Rodzaje"]
             self.__list_name_game_type = self.__get_list_name_game_type()
             self.__selected_game_type = self.__get_last_selected_game_type()
             self.__get_player_with_valid_licenses = self.__config["valid_licenses"]
@@ -48,22 +46,19 @@ class GUI(QDialog):
             self.__set_layout()
 
     def __init_window(self):
-        """."""
         self.setWindowTitle("ATD - Asystent Tworzenia Drużyn")
-        # self.setWindowFlag(Qt.WindowMinimizeButtonHint)
         self.setWindowIcon(QtGui.QIcon('icon/icon.ico'))
         self.move(300, 50)
         self.layout()
 
     def __set_layout(self):
-        """."""
-
         game_type_selection = GameTypeSelection(self.__save_with_polish_signs, self.__get_player_with_valid_licenses,
                                                 self.__selected_game_type["name"],
                                                 self.__list_name_game_type, self.__on_selected_game_type,
                                                 self.__click_checkbox_valid_licenses, self.__click_checkbox_polish_sign)
 
-        self.__player_section = PlayerSection(self.__selected_game_type, self.__get_player_with_valid_licenses)
+        self.__player_section = PlayerSection(self.__config,  self.__selected_game_type,
+                                              self.__get_player_with_valid_licenses)
 
         button_save = QPushButton("Stwórz schamaty")
         button_save.clicked.connect(self.__create_schemes)
@@ -129,24 +124,27 @@ class GUI(QDialog):
         self.__layout.addWidget(label)
 
     def __check_all_file_and_dir_exists(self):
+        """
+        Metoda sprawdza czy istnieją obowiązkowe nazwy plików (config.json, cash.json) oraz czy w config.json przy
+        podaniu nazwy nie został użyty błędnie '\', poznieważ jest to znak specjalny i aby python go odczytał
+        jako '\' trzeba zapisać '\\'
+        :return: zawartość config.json <dict>, listę nieznaleznionych plików, listę nieznalezionych katalogów,
+                listę błędnie zapisanych nazw plików/katalogów
+        """
         list_file_path = ["config.json", "cash.json"]
-        list_missing_file, list_missing_dir = [], []
-        bad_path_file = []
+        list_missing_file, list_missing_dir, bad_path_file = [], [], []
         for file_path in list_file_path:
-            if "\\" in file_path:
-                bad_path_file.append(file_path)
-                continue
             if not Path(file_path).is_file():
                 list_missing_file.append(file_path)
 
-        if len(list_missing_file) + len(list_missing_dir) + len(bad_path_file) > 0:
-            return list_missing_file, list_missing_dir, bad_path_file
-        print("1")
+        if len(list_missing_file) or len(list_missing_dir):
+            return False, list_missing_file, list_missing_dir, bad_path_file
+
         config = self.__get_config()
-        print("2")
+
         if config is False:
             bad_path_file.append("W config.json jest pojedyńczy '\\' zamiast '\\\\'")
-            return list_missing_file, list_missing_dir, bad_path_file
+            return config, list_missing_file, list_missing_dir, bad_path_file
 
         file_path = config["license_file"]["path"]
         if self.__check_str_have_backslash(file_path):
@@ -160,35 +158,43 @@ class GUI(QDialog):
         elif not Path(dir_path).is_dir():
             list_missing_dir.append(dir_path)
 
-        return list_missing_file, list_missing_dir, bad_path_file
+        return config, list_missing_file, list_missing_dir, bad_path_file
 
     @staticmethod
     def __check_str_have_backslash(string: str) -> bool:
+        """Cz str zawiera znaki specjalne"""
         if "\t" in string or "\n" in string or "\r" in string:
             return True
         return False
 
     def __get_date_creating_license_file(self):
+        """Zwraca kiedy ostatno był modyfikowany plik z licencjami."""
         path_to_license_file = self.__config["license_file"]["path"]
         modification_time = time.strftime('%d.%m.%Y', time.localtime(os.path.getmtime(path_to_license_file)))
         return "Lecencje: stan na " + modification_time
 
     @staticmethod
     def __get_config():
-        f = open("config.json", encoding='utf-8-sig')
         try:
-            config = json.load(f)
-        except json.decoder.JSONDecodeError:
+            config = json.load(open("config.json", encoding='utf-8-sig'))
+        except ValueError:
+            return False
+        except AttributeError:
             return False
         return config
 
     def __get_list_name_game_type(self):
+        """Zwraca listę możliwych do wyboru typów gier."""
         list_name = []
         for game_type in self.__list_game_type:
             list_name.append(game_type["name"])
         return list_name
 
     def __on_selected_game_type(self, new_name_game_type: str):
+        """
+        Po wyborze w combobox nowego typu gry, jest wyszukiwany obiekt o takiej nazwie i zapisywany w
+        self.__selected_game_type oraz jest uruchamiana metoda, która aktualizuje dostępnych graczy do wyboru.
+        """
         for game_type in self.__list_game_type:
             if game_type["name"] == new_name_game_type:
                 self.__selected_game_type = game_type
@@ -207,6 +213,10 @@ class GUI(QDialog):
         self.__del_list_file(path_to_dir, list_file_to_del)
         list_schema_names = self.__save_new_schemes(path_to_dir, next_nr, list_schemes_name)
         self.__save_last_game_type(self.__selected_game_type["name"])
+        self.__show_message_box_about_schemes_is_ready(list_schema_names)
+
+    @staticmethod
+    def __show_message_box_about_schemes_is_ready(list_schema_names):
         msg = QMessageBox()
         msg.setWindowTitle("Info")
         info = "Schematy zostały zapisany. Nazwy zapisanych schematów to:\n"
@@ -214,18 +224,14 @@ class GUI(QDialog):
             info += schema_name + "\n"
         msg.setText(info)
         msg.setIcon(QMessageBox.Information)
-        x = msg.exec_()
+        msg.exec_()
 
     def __read_existing_schemes(self, path_to_dir_witch_schemes: str):
         """
-
-        :param path_to_dir_witch_schemes:
         :return: list[numer kolejnego schematu, lista nazw schamatów do usunięcia, lista nazw schematów]
         """
-        list_file_to_del = []
-        list_schemes_name = []
+        next_nr, list_file_to_del, list_schemes_name = 0, [], []
         list_file_name = self.__get_list_file_name_from_path(path_to_dir_witch_schemes)
-        next_nr = 0
         for file_name in list_file_name:
             with open(path_to_dir_witch_schemes + "/" + file_name, "r") as file:
                 file_content = file.read()
@@ -234,6 +240,7 @@ class GUI(QDialog):
                 else:
                     list_schemes_name.append(file_content.split("\n", 2)[1].split("=")[1])
                     next_nr = int(file_name.split("ms")[1].split(".ini")[0]) + 1
+                file.close()
         return [next_nr, list_file_to_del, list_schemes_name]
 
     @staticmethod
@@ -263,11 +270,7 @@ class GUI(QDialog):
         schemes_data = self.__player_section.get_data()
         how_many_players_in_scheme = len(self.__selected_game_type["order_of_player"])
         for i, scheme_data in enumerate(schemes_data):
-            name = scheme_data["name"]
-            if self.__save_with_polish_signs is False:
-                name = self.__remove_polish_characters(name)
-            while name in list_exist_schemes_name:
-                name += "."
+            name = self.__get_unique_schema_name(list_exist_schemes_name, scheme_data["name"])
             if self.__selected_game_type["type"] == "turniej":
                 self.__save_name_tournament(name)
             list_exist_schemes_name.append(name)
@@ -281,15 +284,28 @@ class GUI(QDialog):
                     player_data = scheme_data["players"][nr_player]
                     nr_player += 1
                     last_name, name, team = player_data['last_name'], player_data['name'], player_data['team']
-                file_text += "[Spieler " + str(j) + "]\nName=" + str(name) + "\nVorname=" + str(last_name) + "\nLetztes Spiel=\n" \
-                             "Platz-Ziffer=\n Spielernr.=\nGeb.-Jahr=\nAltersklasse=\nPass-Nr.=\nRangliste=\n" \
-                                                                                              "Verein=" + str(team) + "\n"
+                file_text += "[Spieler " + str(j) + "]\nName=" + str(name) + "\nVorname=" + str(last_name) + \
+                             "\nLetztes Spiel=\nPlatz-Ziffer=\n Spielernr.=\nGeb.-Jahr=\nAltersklasse=\nPass-Nr.=\n" \
+                             "Rangliste=\nVerein=" + str(team) + "\n"
             if self.__save_with_polish_signs is False:
                 file_text = self.__remove_polish_characters(file_text)
-            file = open(path_to_dir + "/ms" + str(next_file_nr + i) + ".ini", "w")
+            file = open(str(path_to_dir) + "/ms" + str(next_file_nr + i) + ".ini", "w", encoding='utf-8-sig')
             file.write(file_text)
             file.close()
         return list_schema_names
+
+    def __get_unique_schema_name(self, list_exist_schemes_name, name: str) -> str:
+        """
+        Metoda zwraca unikalną nazwę schematu. Jeżeli gracz chciał bez poliskich znaków, taka zostanie zwrócona.
+        :param list_exist_schemes_name: lista już użytych nazw schematów
+        :param name: wpisana przez użytkowaika nazwa schematu
+        :return: unikalna nazwa schematu, która jeżeli użytkownik tak chciał nie ma polskich znaków
+        """
+        if self.__save_with_polish_signs is False:
+            name = self.__remove_polish_characters(name)
+        while name in list_exist_schemes_name:
+            name += "."
+        return name
 
     @staticmethod
     def __remove_polish_characters(text: str) -> str:
@@ -304,12 +320,12 @@ class GUI(QDialog):
     @staticmethod
     def __save_name_tournament(name: str):
         filename = 'cash.json'
-        with open(filename, 'r') as f:
+        with open(filename, 'r', encoding='utf-8-sig') as f:
             data = json.load(f)
             data['tournament_name'] = name
 
         os.remove(filename)
-        with open(filename, 'w') as f:
+        with open(filename, 'w', encoding='utf-8-sig') as f:
             json.dump(data, f, indent=4)
 
     @staticmethod
@@ -317,15 +333,14 @@ class GUI(QDialog):
         filename = 'cash.json'
         with open(filename, 'r', encoding='utf-8-sig') as f:
             data = json.load(f)
-            data['last_game_type'] = name_game_type  # <--- add `id` value.
+            data['last_game_type'] = name_game_type
 
         os.remove(filename)
         with open(filename, 'w', encoding='utf-8-sig') as f:
             json.dump(data, f, indent=4)
 
     def __get_last_selected_game_type(self) -> dict:
-        f = open("cash.json", encoding='utf-8-sig')
-        cash = json.load(f)
+        cash = json.load(open("cash.json", encoding='utf-8-sig'))
         game_type_name = cash["last_game_type"]
         for game_type in self.__list_game_type:
             if game_type["name"] == game_type_name:
@@ -334,12 +349,9 @@ class GUI(QDialog):
 
 
 class GameTypeSelection(QGroupBox):
-    """."""
-
     def __init__(self, default_bool_polish_characters: bool, default_bool_valid_licenses: bool,
-                 name_selected_game_type: str,
-                 list_name_game_type, on_selected_game_type, click_checkbox_valid_licenses,
-                 click_checkbox_polish_sign):
+                 name_selected_game_type: str, list_name_game_type, on_selected_game_type,
+                 click_checkbox_valid_licenses, click_checkbox_polish_sign):
         super().__init__("Główne ustawienia")
         self.__on_selected_game_type = on_selected_game_type
         self.__click_checkbox_polish_sign = click_checkbox_polish_sign
@@ -384,9 +396,7 @@ class GameTypeSelection(QGroupBox):
 
 
 class PlayerSection(QWidget):
-    """."""
-
-    def __init__(self, game_type: dict, player_with_valid_licenses: bool):
+    def __init__(self, config, game_type: dict, player_with_valid_licenses: bool):
         super().__init__()
         self.__settings_game_type = game_type
         self.__player_with_valid_licenses = player_with_valid_licenses
@@ -394,7 +404,8 @@ class PlayerSection(QWidget):
         self.__list_team_name = []
         self.__number_of_player_in_team = 0
         self.__list_age_category = []
-        self.__license_config = {}
+        self.__license_config = config["license_file"]
+        self.__license_file = open(self.__license_config["path"], "r", encoding='utf-8-sig')
         self.__game_type = ""
         self.__layout = QGridLayout()
         self.setLayout(self.__layout)
@@ -409,25 +420,24 @@ class PlayerSection(QWidget):
         self.set_layout()
 
     def set_layout(self):
-        """."""
         for i in reversed(range(self.__layout.count())):
             self.__layout.itemAt(i).widget().deleteLater()
         number_of_team = self.__settings_game_type["number_of_team"]
         self.__number_of_player_in_team = sum(self.__settings_game_type["order_of_player"])
         self.__game_type = self.__settings_game_type["type"]
         self.__list_age_category = self.__settings_game_type["list_age_category"]
-        self.__license_config = self.__get_license_config()
         self.__list_team_name = self.__get_list_team()
         self.__widgets = []
         for i in range(number_of_team):
             self.__widgets.append({})
-            home = False
-            if self.__settings_game_type["type"] != "turniej" and i == 0:
-                home = True
-            self.__layout.addWidget(self.__team_column("Drużyna nr " + str(i + 1), self.__widgets[i], home), 0, i)
+            home, head = False, "Blok"
+            if self.__settings_game_type["type"] != "turniej":
+                head = "Drużyna nr " + str(i + 1)
+                if i == 0:
+                    home = True
+            self.__layout.addWidget(self.__team_column(head, self.__widgets[i], home), 0, i)
 
     def __team_column(self, name: str, dict_widgets: dict, home: bool):
-        """."""
         widget = QGroupBox(name)
 
         combobox_team = QComboBox()
@@ -462,7 +472,6 @@ class PlayerSection(QWidget):
         return widget
 
     def __set_list_player_in_combobox(self, dict_widgets: dict):
-        """."""
         if self.__settings_game_type["type"] == "turniej":
             dict_widgets["input_name_team"].setText(self.__get_tournament_name())
             name_team = ""
@@ -477,54 +486,43 @@ class PlayerSection(QWidget):
             for player in list_players:
                 combobox_player.addItem(player["full_name"], player)
 
-    @staticmethod
-    def __get_license_config() -> dict:
-        f = open("config.json", encoding='utf-8-sig')
-        config = json.load(f)
-        return config["license_file"]
-
     def __get_list_team(self) -> list:
-        """."""
         index_column_name = self.__license_config["index_column"]["name"]
         index_column_team = self.__license_config["index_column"]["team"]
         index_column_age_category = self.__license_config["index_column"]["age_category"]
         index_column_license_is_valid = self.__license_config["index_column"]["license_is_valid"]
         index_column_where_loaned = self.__license_config["index_column"]["where_loaned"]
         index_column_type_loaned = self.__license_config["index_column"]["type_loaned"]
-        path = self.__license_config["path"]
         list_team = [""]
 
-        with open(path, "r", encoding='utf-8-sig') as csv_file:
-            csv_reader = csv.reader(csv_file)
-            line_count = 0
-            for row in csv_reader:
-                if line_count > 0:
-                    if len(self.__list_age_category) > 0 and \
-                            row[index_column_age_category] not in self.__list_age_category:
-                        continue
-                    if self.__player_with_valid_licenses is True and row[index_column_license_is_valid] != "TAK":
-                        continue
-                    last_name_and_name = row[index_column_name].split(" ", 1)
-                    if len(last_name_and_name) != 2:
-                        continue
-                    team = row[index_column_team]
-                    if self.__game_type != "" and row[index_column_type_loaned] == self.__game_type:
-                        team = row[index_column_where_loaned]
-                    if team not in list_team:
-                        list_team.append(team)
-                line_count += 1
-            list_team.sort()
-            return list_team
+        csv_reader = csv.reader(self.__license_file)
+        self.__license_file.seek(0)
+        line_count = 0
+        for row in csv_reader:
+            if line_count > 0:
+                if len(self.__list_age_category) > 0 and row[index_column_age_category] not in self.__list_age_category:
+                    continue
+                if self.__player_with_valid_licenses is True and row[index_column_license_is_valid] != "TAK":
+                    continue
+                last_name_and_name = row[index_column_name].split(" ", 1)
+                if len(last_name_and_name) != 2:
+                    continue
+                team = row[index_column_team]
+                if self.__game_type != "" and row[index_column_type_loaned] == self.__game_type:
+                    team = row[index_column_where_loaned]
+                if team not in list_team:
+                    list_team.append(team)
+            line_count += 1
+        list_team.sort()
+        return list_team
 
     def __get_list_players(self, team: str) -> list:
-        """."""
         index_column_name = self.__license_config["index_column"]["name"]
         index_column_team = self.__license_config["index_column"]["team"]
         index_column_age_category = self.__license_config["index_column"]["age_category"]
         index_column_license_is_valid = self.__license_config["index_column"]["license_is_valid"]
         index_column_where_loaned = self.__license_config["index_column"]["where_loaned"]
         index_column_type_loaned = self.__license_config["index_column"]["type_loaned"]
-        path = self.__license_config["path"]
         list_licenses = [{
             "full_name": "",
             "team": "",
@@ -532,34 +530,33 @@ class PlayerSection(QWidget):
             "name": "Player"
         }]
 
-        with open(path, "r", encoding='utf-8-sig') as csv_file:
-            csv_reader = csv.reader(csv_file)
-            line_count = 0
-            for row in csv_reader:
-                if line_count > 0:
-                    if len(self.__list_age_category) > 0 and \
-                            row[index_column_age_category] not in self.__list_age_category:
-                        continue
-                    if team != "":
-                        if row[index_column_type_loaned] == "" or row[index_column_type_loaned] != self.__game_type:
-                            if row[index_column_team] != team:
-                                continue
-                        else:
-                            if row[index_column_where_loaned] != team:
-                                continue
-                    if self.__player_with_valid_licenses is True and row[index_column_license_is_valid] != "TAK":
-                        continue
-                    last_name_and_name = row[index_column_name].split(" ", 1)
-                    if len(last_name_and_name) != 2:
-                        continue
-                    list_licenses.append({
-                        "full_name": row[index_column_name],
-                        "team": row[index_column_team],
-                        "last_name": last_name_and_name[0],
-                        "name": last_name_and_name[1]
-                    })
-                line_count += 1
-            return list_licenses
+        self.__license_file.seek(0)
+        csv_reader = csv.reader(self.__license_file)
+        line_count = 0
+        for row in csv_reader:
+            if line_count > 0:
+                if len(self.__list_age_category) > 0 and row[index_column_age_category] not in self.__list_age_category:
+                    continue
+                if team != "":
+                    if row[index_column_type_loaned] == "" or row[index_column_type_loaned] != self.__game_type:
+                        if row[index_column_team] != team:
+                            continue
+                    else:
+                        if row[index_column_where_loaned] != team:
+                            continue
+                if self.__player_with_valid_licenses is True and row[index_column_license_is_valid] != "TAK":
+                    continue
+                last_name_and_name = row[index_column_name].split(" ", 1)
+                if len(last_name_and_name) != 2:
+                    continue
+                list_licenses.append({
+                    "full_name": row[index_column_name],
+                    "team": row[index_column_team],
+                    "last_name": last_name_and_name[0],
+                    "name": last_name_and_name[1]
+                })
+            line_count += 1
+        return list_licenses
 
     def get_data(self):
         data = []
