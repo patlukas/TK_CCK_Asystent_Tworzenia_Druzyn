@@ -2,6 +2,8 @@ import csv
 import json
 import os
 import sys
+import time
+from pathlib import Path
 
 from PyQt5.QtWidgets import (
     QApplication,
@@ -28,21 +30,26 @@ class GUI(QDialog):
     def __init__(self):
         """."""
         super().__init__()
-        self.__config = self.__get_config()
-        self.__list_game_type = self.__config["Rodzaje"]
-        self.__list_name_game_type = self.__get_list_name_game_type()
-        self.__selected_game_type = self.__get_last_selected_game_type()
-        self.__get_player_with_valid_licenses = self.__config["valid_licenses"]
-        self.__save_with_polish_signs = self.__config["polish_characters"]
-        self.__player_section: PlayerSection | None = None
         self.__init_window()
         self.__layout = QHBoxLayout()
         self.setLayout(self.__layout)
-        self.__set_layout()
+
+        list_missing_file, list_missing_dir = self.__check_all_file_and_dir_exists()
+        if len(list_missing_dir) + len(list_missing_file) > 0:
+            self.__set_layout_missing_file(list_missing_file, list_missing_dir)
+        else:
+            self.__config = self.__get_config()
+            self.__list_game_type = self.__config["Rodzaje"]
+            self.__list_name_game_type = self.__get_list_name_game_type()
+            self.__selected_game_type = self.__get_last_selected_game_type()
+            self.__get_player_with_valid_licenses = self.__config["valid_licenses"]
+            self.__save_with_polish_signs = self.__config["polish_characters"]
+            self.__player_section: PlayerSection | None = None
+            self.__set_layout()
 
     def __init_window(self):
         """."""
-        self.setWindowTitle("Asystent Tworzenia Drużyn")
+        self.setWindowTitle("ATD - Asystent Tworzenia Drużyn")
         self.setWindowFlag(Qt.WindowMinimizeButtonHint)
         self.setWindowIcon(QtGui.QIcon('icon/icon.ico'))
         self.move(300, 50)
@@ -60,9 +67,12 @@ class GUI(QDialog):
         button_save = QPushButton("Stwórz schamaty")
         button_save.clicked.connect(self.__create_schemes)
 
-        author = QLabel("2022    Patryk Lukaszewski  V1.0.2")
+        author = QLabel("2022    Patryk Lukaszewski  V1.0.4")
         author.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         author.setContentsMargins(0, 10, 0, 0)
+
+        license_modify_time = QLabel(self.__get_date_creating_license_file())
+        license_modify_time.setAlignment(QtCore.Qt.AlignCenter)
 
         column1 = QWidget()
         column1_layout = QGridLayout()
@@ -77,12 +87,52 @@ class GUI(QDialog):
         row1_layout.addWidget(QLabel(""), 0, 2)
 
         column1_layout.addWidget(row1, 0, 0)
-        column1_layout.addWidget(self.__player_section, 1, 0)
-        column1_layout.addWidget(button_save, 2, 0)
-        column1_layout.addWidget(author, 3, 0)
+        column1_layout.addWidget(license_modify_time)
+        column1_layout.addWidget(self.__player_section, 2, 0)
+        column1_layout.addWidget(button_save, 3, 0)
+        column1_layout.addWidget(author, 4, 0)
         column1_layout.setContentsMargins(10, 10, 10, 0)
         self.__layout.addWidget(column1)
         self.__layout.setContentsMargins(10, 10, 10, 3)
+
+    def __set_layout_missing_file(self, list_missing_file: list[str], list_missing_dir: list[str]):
+        text = ""
+        if len(list_missing_file):
+            text = "Brakuje następujących plików:"
+            for name_file in list_missing_file:
+                text += f"\n    -   {name_file}"
+        text += "\n\n"
+        if len(list_missing_dir):
+            text += "Błędna ścieżka do następujących katalogów:"
+            for name_file in list_missing_dir:
+                text += f"\n    -   {name_file}"
+        label = QLabel(text)
+        label.setStyleSheet(''' font-size: 24px; color: red''')
+        self.__layout.addWidget(label)
+
+    def __check_all_file_and_dir_exists(self):
+        list_file_path = ["config.json", "cash.json"]
+        list_missing_file, list_missing_dir = [], []
+        for file_path in list_file_path:
+            if not Path(file_path).is_file():
+                list_missing_file.append(file_path)
+
+        config = self.__get_config()
+
+        file_path = config["license_file"]["path"]
+        if not Path(file_path).is_file():
+            list_missing_file.append(file_path)
+
+        dir_path = config["path_to_dir_witch_schemes"]
+        if not Path(dir_path).is_dir():
+            list_missing_dir.append(dir_path)
+
+        return list_missing_file, list_missing_dir
+
+    def __get_date_creating_license_file(self):
+        path_to_license_file = self.__config["license_file"]["path"]
+        modification_time = time.strftime('%d.%m.%Y', time.localtime(os.path.getmtime(path_to_license_file)))
+        return f"Plik z lecencjami zawiera stan na dzień {modification_time}"
 
     @staticmethod
     def __get_config() -> dict:
@@ -159,6 +209,7 @@ class GUI(QDialog):
             files.sort()
             return files
         except FileNotFoundError:
+            print("T")
             return []
 
     @staticmethod
