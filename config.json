@@ -1,0 +1,39 @@
+{
+  "Rodzaje": [
+    {
+      "name": "Superliga Mezczyzn",
+      "list_age_category": ["Junior młodszy", "Junior", "Senior"],
+      "type": "superliga",
+      "number_of_team": 2,
+      "order_of_player": [1, 1, 1, 1, 1, 1]
+    },
+    {
+      "name": "Centralna Liga Juniorow",
+      "list_age_category": ["Junior młodszy", "Junior", "Juniorka młodsza", "Juniorka"],
+      "type": "-",
+      "number_of_team": 2,
+      "order_of_player": [1, 1, 0, 1, 1, 0]
+    },
+    {
+      "name": "Turniej Seniorski",
+      "list_age_category": ["Junior", "Juniorka", "Senior", "Seniorka"],
+      "type": "turniej",
+      "number_of_team": 1,
+      "order_of_player": [1, 1, 1, 1, 1, 1]
+    }
+  ],
+  "license_file": {
+    "path": "licencje.csv",
+    "index_column": {
+      "name": 3,
+      "team": 4,
+      "age_category": 5,
+      "license_is_valid": 9,
+      "where_loaned": 10,
+      "type_loaned": 11
+    }
+  },
+  "polish_characters": false,
+  "valid_licenses": true,
+  "path_to_dir_witch_schemes": "Mannschaften"
+}
