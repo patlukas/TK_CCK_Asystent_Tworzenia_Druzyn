@@ -34,9 +34,9 @@ class GUI(QDialog):
         self.__layout = QHBoxLayout()
         self.setLayout(self.__layout)
 
-        list_missing_file, list_missing_dir = self.__check_all_file_and_dir_exists()
-        if len(list_missing_dir) + len(list_missing_file) > 0:
-            self.__set_layout_missing_file(list_missing_file, list_missing_dir)
+        list_missing_file, list_missing_dir, bad_path_file = self.__check_all_file_and_dir_exists()
+        if len(list_missing_dir) + len(list_missing_file) + len(bad_path_file) > 0:
+            self.__set_layout_missing_file(list_missing_file, list_missing_dir, bad_path_file)
         else:
             self.__config = self.__get_config()
             self.__list_game_type = self.__config["Rodzaje"]
@@ -67,12 +67,11 @@ class GUI(QDialog):
         button_save = QPushButton("Stwórz schamaty")
         button_save.clicked.connect(self.__create_schemes)
 
-        author = QLabel("2022    Patryk Lukaszewski  V1.0.4")
+        author = QLabel("   2022 Patryk Lukaszewski V1.6")
         author.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        author.setContentsMargins(0, 10, 0, 0)
 
         license_modify_time = QLabel(self.__get_date_creating_license_file())
-        license_modify_time.setAlignment(QtCore.Qt.AlignCenter)
+        license_modify_time.setAlignment(QtCore.Qt.AlignLeft)
 
         column1 = QWidget()
         column1_layout = QGridLayout()
@@ -86,25 +85,43 @@ class GUI(QDialog):
         row1_layout.addWidget(game_type_selection, 0, 1)
         row1_layout.addWidget(QLabel(""), 0, 2)
 
+        row4 = QWidget()
+        row4_layout = QGridLayout()
+        row4.setLayout(row4_layout)
+        row4.setContentsMargins(0, 10, 0, 0)
+
+        row4_layout.addWidget(license_modify_time, 0, 0)
+        row4_layout.addWidget(author, 0, 1)
+
         column1_layout.addWidget(row1, 0, 0)
-        column1_layout.addWidget(license_modify_time)
-        column1_layout.addWidget(self.__player_section, 2, 0)
-        column1_layout.addWidget(button_save, 3, 0)
-        column1_layout.addWidget(author, 4, 0)
+        column1_layout.addWidget(self.__player_section, 1, 0)
+        column1_layout.addWidget(button_save, 2, 0)
+        column1_layout.addWidget(row4, 3, 0)
         column1_layout.setContentsMargins(10, 10, 10, 0)
         self.__layout.addWidget(column1)
         self.__layout.setContentsMargins(10, 10, 10, 3)
 
-    def __set_layout_missing_file(self, list_missing_file: list[str], list_missing_dir: list[str]):
+    def __set_layout_missing_file(self, list_missing_file: list[str], list_missing_dir: list[str],
+                                  bad_path_file: list[str]):
         text = ""
         if len(list_missing_file):
             text = "Brakuje następujących plików:"
             for name_file in list_missing_file:
                 text += f"\n    -   {name_file}"
-        text += "\n\n"
+            if len(list_missing_dir) or len(bad_path_file):
+                text += "\n\n"
+
         if len(list_missing_dir):
             text += "Błędna ścieżka do następujących katalogów:"
             for name_file in list_missing_dir:
+                text += f"\n    -   {name_file}"
+            if len(bad_path_file):
+                text += "\n\n"
+
+        if len(bad_path_file):
+            text += "Ścieżki do tych plików nie mogą zawierać \n" \
+                    "pojedyńczego '\\', zasmiast tego musi mieć '/' lub '\\\\':"
+            for name_file in bad_path_file:
                 text += f"\n    -   {name_file}"
         label = QLabel(text)
         label.setStyleSheet(''' font-size: 24px; color: red''')
@@ -113,31 +130,55 @@ class GUI(QDialog):
     def __check_all_file_and_dir_exists(self):
         list_file_path = ["config.json", "cash.json"]
         list_missing_file, list_missing_dir = [], []
+        bad_path_file = []
         for file_path in list_file_path:
+            if "\\" in file_path:
+                bad_path_file.append(file_path)
+                continue
             if not Path(file_path).is_file():
                 list_missing_file.append(file_path)
 
+        if len(list_missing_file) + len(list_missing_dir) + len(bad_path_file) > 0:
+            return list_missing_file, list_missing_dir, bad_path_file
+
         config = self.__get_config()
+        if config is False:
+            bad_path_file.append("W config.json jest pojedyńczy '\\' zamiast '\\\\'")
+            return list_missing_file, list_missing_dir, bad_path_file
 
         file_path = config["license_file"]["path"]
-        if not Path(file_path).is_file():
+        if self.__check_str_have_backslash(file_path):
+            bad_path_file.append(file_path)
+        elif not Path(file_path).is_file():
             list_missing_file.append(file_path)
 
         dir_path = config["path_to_dir_witch_schemes"]
-        if not Path(dir_path).is_dir():
+        if self.__check_str_have_backslash(dir_path):
+            bad_path_file.append(dir_path)
+        elif not Path(dir_path).is_dir():
             list_missing_dir.append(dir_path)
 
-        return list_missing_file, list_missing_dir
+        return list_missing_file, list_missing_dir, bad_path_file
+
+    @staticmethod
+    def __check_str_have_backslash(string: str) -> bool:
+        if "\t" in string or "\n" in string or "\r" in string:
+            return True
+        return False
+
 
     def __get_date_creating_license_file(self):
         path_to_license_file = self.__config["license_file"]["path"]
         modification_time = time.strftime('%d.%m.%Y', time.localtime(os.path.getmtime(path_to_license_file)))
-        return f"Plik z lecencjami zawiera stan na dzień {modification_time}"
+        return f"Lecencje: stan na {modification_time}"
 
     @staticmethod
     def __get_config() -> dict:
         f = open("config.json", encoding='utf-8')
-        config = json.load(f)
+        try:
+            config = json.load(f)
+        except json.decoder.JSONDecodeError:
+            return False
         return config
 
     def __get_list_name_game_type(self) -> list[str]:
