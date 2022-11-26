@@ -24,8 +24,6 @@ from PyQt5 import QtGui
 
 
 class GUI(QDialog):
-    """."""
-
     def __init__(self):
         super().__init__()
         self.__init_window()
@@ -64,7 +62,7 @@ class GUI(QDialog):
         button_save = QPushButton("Stwórz schamaty")
         button_save.clicked.connect(self.__create_schemes)
 
-        author = QLabel("   2022 Patryk Lukaszewski V1.8")
+        author = QLabel("   2022 Patryk Lukaszewski V1.9")
         author.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
         license_modify_time = QLabel(self.__get_date_creating_license_file())
@@ -163,7 +161,7 @@ class GUI(QDialog):
 
     @staticmethod
     def __check_str_have_backslash(string: str) -> bool:
-        """Cz str zawiera znaki specjalne"""
+        """Czy str zawiera znaki specjalne"""
         if "\t" in string or "\n" in string or "\r" in string:
             return True
         return False
@@ -280,20 +278,44 @@ class GUI(QDialog):
                         "1=\nVereins-Nr=\nLV-Nr=0\nAnzahl Spieler=" + str(how_many_players_in_scheme) + "\n"
             nr_player = 0
             for j, order_of_player in enumerate(self.__selected_game_type["order_of_player"]):
-                last_name, name, team = "No", "Player", ""
+                last_name, name, team = "Player", "No", ""
                 if order_of_player == 1:
                     player_data = scheme_data["players"][nr_player]
                     nr_player += 1
                     last_name, name, team = player_data['last_name'], player_data['name'], player_data['team']
+                    last_name = self.__standardization_to_windows_restriction(last_name)
+                    name = self.__standardization_to_windows_restriction(name)
+                    team = self.__standardization_to_windows_restriction(team, True)
                 file_text += "[Spieler " + str(j) + "]\nName=" + str(name) + "\nVorname=" + str(last_name) + \
                              "\nLetztes Spiel=\nPlatz-Ziffer=\n Spielernr.=\nGeb.-Jahr=\nAltersklasse=\nPass-Nr.=\n" \
                              "Rangliste=\nVerein=" + str(team) + "\n"
             if self.__save_with_polish_signs is False:
                 file_text = self.__remove_polish_characters(file_text)
-            file = open(str(path_to_dir) + "/ms" + str(next_file_nr + i) + ".ini", "w", encoding='utf-8-sig')
+            file = open(str(path_to_dir) + "/ms" + str(next_file_nr + i) + ".ini", "w")
             file.write(file_text)
             file.close()
         return list_schema_names
+
+    @staticmethod
+    def __standardization_to_windows_restriction(name: str, can_empty=False) -> str:
+        """
+        Metoda standaryzuje przekazaną nazwę, aby mogła być wykorzystana jako nazwa pliku/katalogu w Windowsie,
+        czyli usuwa '.' na początku i końcu, usuwa spacje na początku i końcu i usuwa znaki specjalne
+        :param name: wpisana przez użytkowaika nazwa
+        :param can_empty: czy może zostać zwrócony pusty string
+        :return: ustandaryzowany string
+        """
+        name = name.strip()
+        list_replace = ["/", "\\", ":", "*", "?", "\"", "<", ">", "|"]
+        for old in list_replace:
+            name = name.replace(old, "")
+        if len(name) and name[0] == ".":
+            name = name[1:]
+        if len(name) and name[-1] == ".":
+            name = name[:-1]
+        if name == "" and not can_empty:
+            return "_"
+        return name
 
     def __get_unique_schema_name(self, list_exist_schemes_name, name: str) -> str:
         """
@@ -302,10 +324,11 @@ class GUI(QDialog):
         :param name: wpisana przez użytkowaika nazwa schematu
         :return: unikalna nazwa schematu, która jeżeli użytkownik tak chciał nie ma polskich znaków
         """
+        name = self.__standardization_to_windows_restriction(name)
         if self.__save_with_polish_signs is False:
             name = self.__remove_polish_characters(name)
         while name in list_exist_schemes_name:
-            name += "."
+            name += "_"
         return name
 
     @staticmethod
@@ -389,7 +412,6 @@ class GameTypeSelection(QGroupBox):
                                                      "będzie wpisane w schemacie 'Gostyn'")
 
     def __set_layout(self):
-        """."""
         self.__layout.addWidget(self.__label_types, 0, 0)
         self.__layout.addWidget(self.__combobox_game_type, 0, 1)
         self.__layout.addWidget(self.__checkbox_valid_licenses, 1, 0, 1, 2)
@@ -478,7 +500,7 @@ class PlayerSection(QWidget):
             name_team = ""
         else:
             name_team = dict_widgets["combobox_team"].currentText()
-            dict_widgets["input_name_team"].setText(". " + name_team + " .")
+            dict_widgets["input_name_team"].setText("_ " + name_team + " _")
 
         list_players = self.__get_list_players(name_team)
 
