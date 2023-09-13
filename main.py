@@ -62,7 +62,7 @@ class GUI(QDialog):
         button_save = QPushButton("Stwórz schamaty")
         button_save.clicked.connect(self.__create_schemes)
 
-        author = QLabel("   2022 Patryk Lukaszewski V1.9")
+        author = QLabel("   13.09.2023 patlukas V1.11")
         author.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
         license_modify_time = QLabel(self.__get_date_creating_license_file())
@@ -429,7 +429,7 @@ class PlayerSection(QWidget):
         self.__list_age_category = []
         self.__license_config = config["license_file"]
         self.__license_file = open(self.__license_config["path"], "r", encoding='utf-8-sig')
-        self.__game_type = ""
+        self.__with_loaned = False
         self.__layout = QGridLayout()
         self.setLayout(self.__layout)
         self.set_layout()
@@ -447,7 +447,7 @@ class PlayerSection(QWidget):
             self.__layout.itemAt(i).widget().deleteLater()
         number_of_team = self.__settings_game_type["number_of_team"]
         self.__number_of_player_in_team = sum(self.__settings_game_type["order_of_player"])
-        self.__game_type = self.__settings_game_type["type"]
+        self.__with_loaned = self.__settings_game_type["with_loaned"]
         self.__list_age_category = self.__settings_game_type["list_age_category"]
         self.__list_team_name = self.__get_list_team()
         self.__widgets = []
@@ -515,7 +515,6 @@ class PlayerSection(QWidget):
         index_column_age_category = self.__license_config["index_column"]["age_category"]
         index_column_license_is_valid = self.__license_config["index_column"]["license_is_valid"]
         index_column_where_loaned = self.__license_config["index_column"]["where_loaned"]
-        index_column_type_loaned = self.__license_config["index_column"]["type_loaned"]
         list_team = [""]
 
         csv_reader = csv.reader(self.__license_file)
@@ -531,8 +530,9 @@ class PlayerSection(QWidget):
                 if len(last_name_and_name) != 2:
                     continue
                 team = row[index_column_team]
-                if self.__game_type != "" and row[index_column_type_loaned] == self.__game_type:
+                if self.__with_loaned and row[index_column_where_loaned] != "":
                     team = row[index_column_where_loaned]
+                team = team.strip()
                 if team not in list_team:
                     list_team.append(team)
             line_count += 1
@@ -545,7 +545,6 @@ class PlayerSection(QWidget):
         index_column_age_category = self.__license_config["index_column"]["age_category"]
         index_column_license_is_valid = self.__license_config["index_column"]["license_is_valid"]
         index_column_where_loaned = self.__license_config["index_column"]["where_loaned"]
-        index_column_type_loaned = self.__license_config["index_column"]["type_loaned"]
         list_licenses = [{
             "full_name": "",
             "team": "",
@@ -558,27 +557,32 @@ class PlayerSection(QWidget):
         line_count = 0
         for row in csv_reader:
             if line_count > 0:
+                player_team = ""
                 if len(self.__list_age_category) > 0 and row[index_column_age_category] not in self.__list_age_category:
                     continue
-                if team != "":
-                    if row[index_column_type_loaned] == "" or row[index_column_type_loaned] != self.__game_type:
-                        if row[index_column_team] != team:
-                            continue
-                    else:
-                        if row[index_column_where_loaned] != team:
-                            continue
+                if self.__with_loaned and row[index_column_where_loaned] != "":
+                    player_team = row[index_column_where_loaned]
+                else:
+                    player_team = row[index_column_team]
+                player_team = player_team.strip()
+                if team != "" and player_team != team:
+                    continue
                 if self.__player_with_valid_licenses is True and row[index_column_license_is_valid] != "TAK":
                     continue
-                last_name_and_name = row[index_column_name].split(" ", 1)
+                full_name = row[index_column_name].strip()
+                last_name_and_name = full_name.split(" ", 1)
                 if len(last_name_and_name) != 2:
                     continue
                 list_licenses.append({
-                    "full_name": row[index_column_name],
-                    "team": row[index_column_team],
-                    "last_name": last_name_and_name[0],
-                    "name": last_name_and_name[1]
+                    "full_name": full_name,
+                    "team": player_team,
+                    "last_name": last_name_and_name[0].strip(),
+                    "name": last_name_and_name[1].strip()
                 })
             line_count += 1
+
+        list_licenses = sorted(list_licenses, key=lambda x: x['full_name'])
+
         return list_licenses
 
     def get_data(self):

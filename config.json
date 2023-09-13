@@ -2,24 +2,35 @@
   "Rodzaje": [
     {
       "name": "Superliga Mezczyzn",
-      "list_age_category": ["Junior młodszy", "Junior", "Senior"],
-      "type": "superliga",
+      "list_age_category": ["Junior młodszy", "Junior", "Mężczyzna"],
+      "with_loaned": true,
       "number_of_team": 2,
-      "order_of_player": [1, 1, 1, 1, 1, 1]
+      "order_of_player": [1, 1, 1, 1, 1, 1],
+      "type": "liga"
     },
     {
-      "name": "Centralna Liga Juniorow",
-      "list_age_category": ["Junior młodszy", "Junior", "Juniorka młodsza", "Juniorka"],
-      "type": "-",
+      "name": "Centralna Liga Młodzieżowa (4 tory)",
+      "list_age_category": ["Młodzik", "Junior młodszy", "Junior", "Młodziczka", "Juniorka młodsza", "Juniorka"],
+      "with_loaned": false,
       "number_of_team": 2,
-      "order_of_player": [1, 1, 0, 1, 1, 0]
+      "order_of_player": [1, 1, 1, 1],
+      "type": "liga"
+    },
+    {
+      "name": "Centralna Liga Młodzieżowa (6 torów)",
+      "list_age_category": ["Młodzik", "Junior młodszy", "Junior", "Młodziczka", "Juniorka młodsza", "Juniorka"],
+      "with_loaned": false,
+      "number_of_team": 2,
+      "order_of_player": [1, 1, 0, 1, 1, 0],
+      "type": "liga"
     },
     {
       "name": "Turniej Seniorski",
       "list_age_category": ["Junior", "Juniorka", "Senior", "Seniorka"],
-      "type": "turniej",
+      "with_loaned": false,
       "number_of_team": 1,
-      "order_of_player": [1, 1, 1, 1, 1, 1]
+      "order_of_player": [1, 1, 1, 1, 1, 1],
+      "type": "turniej"
     }
   ],
   "license_file": {
@@ -28,9 +39,8 @@
       "name": 3,
       "team": 4,
       "age_category": 5,
-      "license_is_valid": 9,
-      "where_loaned": 10,
-      "type_loaned": 11
+      "license_is_valid": 11,
+      "where_loaned": 12
     }
   },
   "polish_characters": false,
