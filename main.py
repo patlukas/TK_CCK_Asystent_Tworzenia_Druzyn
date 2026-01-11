@@ -611,9 +611,12 @@ class PlayerSection(QWidget):
                         "team": current_data["team"]
                     })
                 else:
+                    names = current_text.split(" ")
+                    if len(names) == 1:
+                        names.append("No")
                     list_players.append({
-                        "name": current_text.split(" ")[1],
-                        "last_name": current_text.split(" ")[0],
+                        "name": names[1],
+                        "last_name": names[0],
                         "team": ""
                     })
 
