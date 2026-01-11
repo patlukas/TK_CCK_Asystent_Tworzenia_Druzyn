@@ -621,7 +621,6 @@ class PlayerSection(QWidget):
                     })
 
             number_additional_block = int(widget["combobox_number_of_block"].currentText())-1
-            print(number_additional_block)
             for i in range(number_additional_block):
                 for j in range(self.__number_of_player_in_team):
                     list_players.append({
