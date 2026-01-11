@@ -62,7 +62,7 @@ class GUI(QDialog):
         button_save = QPushButton("Stwórz schamaty")
         button_save.clicked.connect(self.__create_schemes)
 
-        author = QLabel("   13.09.2023 patlukas V1.11")
+        author = QLabel("   12.01.2026 patlukas V1.12")
         author.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
         license_modify_time = QLabel(self.__get_date_creating_license_file())
@@ -275,9 +275,11 @@ class GUI(QDialog):
             list_exist_schemes_name.append(name)
             list_schema_names.append(name)
             file_text = "[Allgemein]\nName=" + str(name) + "\nSpielklasse=\nLiga=\nBezirk=\nSpielführer=\nBetreuer " \
-                        "1=\nVereins-Nr=\nLV-Nr=0\nAnzahl Spieler=" + str(how_many_players_in_scheme) + "\n"
+                        "1=\nVereins-Nr=\nLV-Nr=0\nAnzahl Spieler=" + str(len(scheme_data["players"])) + "\n"
             nr_player = 0
-            for j, order_of_player in enumerate(self.__selected_game_type["order_of_player"]):
+            index_order = 0
+            while nr_player < len(scheme_data["players"]) or index_order % how_many_players_in_scheme != 0:
+                order_of_player = self.__selected_game_type["order_of_player"][index_order%how_many_players_in_scheme]
                 last_name, name, team = "Player", "No", ""
                 if order_of_player == 1:
                     player_data = scheme_data["players"][nr_player]
@@ -286,9 +288,10 @@ class GUI(QDialog):
                     last_name = self.__standardization_to_windows_restriction(last_name)
                     name = self.__standardization_to_windows_restriction(name)
                     team = self.__standardization_to_windows_restriction(team, True)
-                file_text += "[Spieler " + str(j) + "]\nName=" + str(name) + "\nVorname=" + str(last_name) + \
+                file_text += "[Spieler " + str(index_order) + "]\nName=" + str(name) + "\nVorname=" + str(last_name) + \
                              "\nLetztes Spiel=\nPlatz-Ziffer=\n Spielernr.=\nGeb.-Jahr=\nAltersklasse=\nPass-Nr.=\n" \
                              "Rangliste=\nVerein=" + str(team) + "\n"
+                index_order += 1
             if self.__save_with_polish_signs is False:
                 file_text = self.__remove_polish_characters(file_text)
             file = open(str(path_to_dir) + "/ms" + str(next_file_nr + i) + ".ini", "w")
@@ -469,6 +472,9 @@ class PlayerSection(QWidget):
             combobox_team.setCurrentText(self.__get_home_team())
         combobox_team.setToolTip("Wybór do której drużyny muszą należeć gracze")
 
+        combobox_number_of_block = QComboBox()
+        combobox_number_of_block.addItems([str(i) for i in range(1, 17)])
+
         input_name_team = QLineEdit()
 
         layout = QGridLayout()
@@ -486,7 +492,13 @@ class PlayerSection(QWidget):
             list_combobox_player.append(combobox_player)
             layout.addWidget(QLabel("Gracz " + str(i + 1)), 2 + i, 0)
             layout.addWidget(combobox_player, 2 + i, 1)
+
+        if self.__settings_game_type["type"] == "turniej":
+            layout.addWidget(QLabel("Liczba bloków"), self.__number_of_player_in_team + 3, 0)
+            layout.addWidget(combobox_number_of_block, self.__number_of_player_in_team + 3, 1)
+
         dict_widgets["combobox_team"] = combobox_team
+        dict_widgets["combobox_number_of_block"] = combobox_number_of_block
         dict_widgets["input_name_team"] = input_name_team
         dict_widgets["list_combobox_player"] = list_combobox_player
 
@@ -604,6 +616,17 @@ class PlayerSection(QWidget):
                         "last_name": current_text.split(" ")[0],
                         "team": ""
                     })
+
+            number_additional_block = int(widget["combobox_number_of_block"].currentText())-1
+            print(number_additional_block)
+            for i in range(number_additional_block):
+                for j in range(self.__number_of_player_in_team):
+                    list_players.append({
+                        "name": "Blok_" + str(i + 2),
+                        "last_name": "Tor_" + str(j + 1),
+                        "team": ""
+                    })
+
             data.append({
                 "name": widget["input_name_team"].text(),
                 "players": list_players
