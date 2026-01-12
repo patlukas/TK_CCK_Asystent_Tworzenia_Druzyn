@@ -23,6 +23,10 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 
 
+APP_NAME = "ATD"
+APP_VERSION = "1.12.0"
+
+
 class GUI(QDialog):
     def __init__(self):
         super().__init__()
@@ -62,7 +66,7 @@ class GUI(QDialog):
         button_save = QPushButton("Stwórz schamaty")
         button_save.clicked.connect(self.__create_schemes)
 
-        author = QLabel("   12.01.2026 patlukas V1.12")
+        author = QLabel("   12.01.2026 patlukas v" + APP_VERSION)
         author.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
         license_modify_time = QLabel(self.__get_date_creating_license_file())
