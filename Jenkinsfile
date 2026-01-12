@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        BRANCH = 'main'
+        BRANCH = 'master'
         GITHUB_USER = "patlukas"
         REPO_NAME = "TK_CCK_Asystent_Tworzenia_Druzyn"
         FILES = '["config.json", "cash.json", "icon/*"]'
